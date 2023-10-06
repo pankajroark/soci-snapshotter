@@ -201,6 +201,7 @@ static struct gzip_zinfo *add_checkpoint(struct gzip_zinfo *index, uint8_t bits,
 
 /* Pretty much the same as from zran.c */
 int generate_zinfo_from_fp(FILE* in, offset_t span, struct gzip_zinfo** idx) {
+    printf("generate_zinfo_from_fp\n");
     int ret;
     offset_t totin, totout;        /* our own total counters to avoid 4GB limit */
     offset_t last;                 /* totout value of last access point */
@@ -230,6 +231,7 @@ int generate_zinfo_from_fp(FILE* in, offset_t span, struct gzip_zinfo** idx) {
         }
         if (strm.avail_in == 0) {
             ret = Z_DATA_ERROR;
+            printf("This is it errors stream avail_in is zero\n");
             goto build_index_error;
         }
         strm.next_in = input;
@@ -249,10 +251,14 @@ int generate_zinfo_from_fp(FILE* in, offset_t span, struct gzip_zinfo** idx) {
             ret = inflate(&strm, Z_BLOCK);      /* return at end of block */
             totin -= strm.avail_in;
             totout -= strm.avail_out;
-            if (ret == Z_NEED_DICT)
+            if (ret == Z_NEED_DICT) {
+                printf("This is it: error needs dict\n");
                 ret = Z_DATA_ERROR;
-            if (ret == Z_MEM_ERROR || ret == Z_DATA_ERROR)
+            }
+            if (ret == Z_MEM_ERROR || ret == Z_DATA_ERROR){
+                printf("This is it: mem data\n");
                 goto build_index_error;
+            }
             if (ret == Z_STREAM_END)
                 break;
 

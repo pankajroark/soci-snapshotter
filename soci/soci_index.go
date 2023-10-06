@@ -373,6 +373,7 @@ func (b *IndexBuilder) Build(ctx context.Context, img images.Image) (*IndexWithM
 // buildSociLayer builds a ztoc for an image layer (`desc`) and returns ztoc descriptor.
 // It may skip building ztoc (e.g., if layer size < `minLayerSize`) and return nil.
 func (b *IndexBuilder) buildSociLayer(ctx context.Context, desc ocispec.Descriptor) (*ocispec.Descriptor, error) {
+	fmt.Printf("processing layer %s \n", desc.Digest)
 	if !images.IsLayerType(desc.MediaType) {
 		return nil, errNotLayerType
 	}
@@ -420,9 +421,11 @@ func (b *IndexBuilder) buildSociLayer(ctx context.Context, desc ocispec.Descript
 	if n != desc.Size {
 		return nil, errors.New("the size of the temp file doesn't match that of the layer")
 	}
+	fmt.Printf("processing layer %s tmp file %s, about to build ztoc \n", desc.Digest, tmpFile.Name())
 
 	toc, err := b.ztocBuilder.BuildZtoc(tmpFile.Name(), b.config.spanSize, ztoc.WithCompression(compressionAlgo))
 	if err != nil {
+		fmt.Printf("processing layer %s tmp file %s, ztoc error %v \n", desc.Digest, tmpFile.Name(), err)
 		return nil, err
 	}
 
