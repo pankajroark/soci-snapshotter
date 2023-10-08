@@ -78,6 +78,8 @@ var (
 		Digest:    emptyJSONObjectDigest,
 		Size:      2,
 	}
+
+	zstdMagic = []byte{0x28, 0xb5, 0x2f, 0xfd}
 )
 
 // Index represents a SOCI index manifest.
@@ -401,6 +403,17 @@ func (b *IndexBuilder) buildSociLayer(ctx context.Context, desc ocispec.Descript
 		return nil, errUnsupportedLayerFormat
 	}
 
+	isZstd, err := b.isZstd(ctx, desc)
+	if err != nil {
+		return nil, err
+	}
+	if isZstd {
+		// zstd layer is not supported by soci
+		fmt.Printf("ztoc skipped - layer %s (%s) is compressed in zstd, which is not supported.\n",
+			desc.Digest, desc.MediaType)
+		return nil, errUnsupportedLayerFormat
+	}
+
 	ra, err := b.contentStore.ReaderAt(ctx, desc)
 	if err != nil {
 		return nil, err
@@ -460,6 +473,26 @@ func (b *IndexBuilder) buildSociLayer(ctx context.Context, desc ocispec.Descript
 		IndexAnnotationImageLayerDigest:    desc.Digest.String(),
 	}
 	return &ztocDesc, err
+}
+func (b *IndexBuilder) isZstd(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+	// pankaj start
+	// todo check zstd here
+	// read first 4 bytes to check if it's zstd
+	source := make([]byte, 10)
+	rc, err := b.contentStore.ReaderAt(ctx, desc)
+	if err != nil {
+		return false, err
+	}
+	defer rc.Close()
+	_, err = rc.ReadAt(source, 0)
+	if err != nil && err != io.EOF {
+		return false, fmt.Errorf("failed to read header bytes from layer to detect media type: %w", err)
+	}
+	if bytes.HasPrefix(source, zstdMagic) {
+		// zstd layer is not supported by soci
+		return true, nil
+	}
+	return false, nil
 }
 
 // NewIndex returns a new index.
